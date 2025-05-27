@@ -1,0 +1,10 @@
+CRITICAL - 2025-05-17 15:54:28 --> ErrorException: Undefined property: App\Controllers\ArtifactsController::$validation
+[Method: POST, Route: artifacts/create]
+in APPPATH\Controllers\ArtifactsController.php on line 101.
+ 1 APPPATH\Controllers\ArtifactsController.php(101): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined property: App\\Controllers\\ArtifactsController::$validation', 'C:\\xampp\\htdocs\\rinconada-artifact-server\\app\\Controllers\\ArtifactsController.php', 101)
+ 2 SYSTEMPATH\CodeIgniter.php(933): App\Controllers\ArtifactsController->create()
+ 3 SYSTEMPATH\CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\ArtifactsController))
+ 4 SYSTEMPATH\CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH\Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH\Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH\index.php(51): CodeIgniter\Boot::bootWeb(Object(Config\Paths))

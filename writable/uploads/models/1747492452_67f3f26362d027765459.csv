@@ -1,0 +1,315 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Generation Time: May 17, 2025 at 04:13 PM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `rinconada_artifact_db`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `artifacts`
+--
+
+CREATE TABLE `artifacts` (
+  `artifact_id` int(11) NOT NULL,
+  `model_file_id` int(10) UNSIGNED DEFAULT NULL,
+  `title` varchar(150) NOT NULL,
+  `description` text DEFAULT NULL,
+  `origin` varchar(150) DEFAULT NULL,
+  `municipality` varchar(150) DEFAULT NULL,
+  `category_id` int(11) DEFAULT NULL,
+  `artist_id` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `file_path` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `artifacts`
+--
+
+INSERT INTO `artifacts` (`artifact_id`, `model_file_id`, `title`, `description`, `origin`, `municipality`, `category_id`, `artist_id`, `user_id`, `created_at`, `file_path`) VALUES
+(1, NULL, 'Spoliarium', 'A famous painting by Juan Luna.', 'Philippines', 'Manila', 1, 1, 1, '2025-05-15 16:25:52', NULL),
+(2, NULL, 'Planting Rice', 'A painting by Fernando Amorsolo.', 'Philippines', 'Manila', 1, 2, 2, '2025-05-15 16:25:52', NULL),
+(3, NULL, 'bold', 'long ass description', 'location', 'name ', 1, 2, 2, '2025-05-16 05:37:06', NULL),
+(4, NULL, 'addsa', 'sadaasd', 'sadasdf', 'ssafasd', 1, 1, 1, '2025-05-17 21:57:00', NULL),
+(5, NULL, 'ewfewf', 'asfasdfscadf', 'asdas fas', 'dsadf f', 2, 1, 2, '2025-05-31 21:58:00', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `artists`
+--
+
+CREATE TABLE `artists` (
+  `artist_id` int(11) NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `biography` text DEFAULT NULL,
+  `municipality` varchar(150) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `artists`
+--
+
+INSERT INTO `artists` (`artist_id`, `name`, `biography`, `municipality`, `created_at`) VALUES
+(1, 'Juan Luna', 'Famous Filipino painter and revolutionary.', 'Manila', '2025-05-15 16:25:52'),
+(2, 'Fernando Amorsolo', 'First National Artist of the Philippines.', 'Manila', '2025-05-15 16:25:52');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `categories`
+--
+
+CREATE TABLE `categories` (
+  `category_id` int(11) NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `description` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `categories`
+--
+
+INSERT INTO `categories` (`category_id`, `name`, `description`) VALUES
+(1, 'Painting', 'Artworks created using paint.'),
+(2, 'Sculpture', 'Three-dimensional artworks.'),
+(3, 'Bold', 'gsjadgjhsagdsa');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `logs`
+--
+
+CREATE TABLE `logs` (
+  `log_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `action` varchar(45) DEFAULT NULL,
+  `timestamp` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `logs`
+--
+
+INSERT INTO `logs` (`log_id`, `user_id`, `action`, `timestamp`) VALUES
+(1, 1, 'created artifact', '2025-05-15 16:25:52'),
+(2, 2, 'uploaded model', '2025-05-15 16:25:52');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `migrations`
+--
+
+CREATE TABLE `migrations` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `version` varchar(255) NOT NULL,
+  `class` varchar(255) NOT NULL,
+  `group` varchar(255) NOT NULL,
+  `namespace` varchar(255) NOT NULL,
+  `time` int(11) NOT NULL,
+  `batch` int(11) UNSIGNED NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+--
+-- Dumping data for table `migrations`
+--
+
+INSERT INTO `migrations` (`id`, `version`, `class`, `group`, `namespace`, `time`, `batch`) VALUES
+(1, '2024-03-20-000001', 'App\\Database\\Migrations\\CreateInitialTables', 'default', 'App', 1747278988, 1),
+(5, '2024-06-08-000003', 'App\\Database\\Migrations\\AddFilePathToArtifacts', 'default', 'App', 1747490700, 2);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `model_files`
+--
+
+CREATE TABLE `model_files` (
+  `model_id` int(11) NOT NULL,
+  `artifact_id` int(11) DEFAULT NULL,
+  `file_name` varchar(150) DEFAULT NULL,
+  `file_path` varchar(255) DEFAULT NULL,
+  `file_size_kb` int(11) DEFAULT NULL,
+  `uploaded_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `model_files`
+--
+
+INSERT INTO `model_files` (`model_id`, `artifact_id`, `file_name`, `file_path`, `file_size_kb`, `uploaded_at`) VALUES
+(1, 1, 'spoliarium.obj', NULL, 2048, '2025-05-15 16:25:52'),
+(2, 2, 'planting_rice.obj', NULL, 1024, '2025-05-15 16:25:52'),
+(3, 4, '1747490286_2b7ac98eaf492870e3d0.bin', NULL, 348, '2025-05-17 13:58:06'),
+(4, 5, '1747490345_37a49a6772fe437d5248.jpg', NULL, 40, '2025-05-17 13:59:05');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `user_id` int(11) NOT NULL,
+  `username` varchar(150) NOT NULL,
+  `password` varchar(150) NOT NULL,
+  `full_name` varchar(200) DEFAULT NULL,
+  `role` enum('admin','user') DEFAULT 'user',
+  `created_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`user_id`, `username`, `password`, `full_name`, `role`, `created_at`) VALUES
+(1, 'admin', 'admin123', 'Admin User', 'admin', '2025-05-15 16:25:52'),
+(2, 'user1', 'user123', 'Regular User', 'user', '2025-05-15 16:25:52');
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `artifacts`
+--
+ALTER TABLE `artifacts`
+  ADD PRIMARY KEY (`artifact_id`),
+  ADD KEY `category_id` (`category_id`),
+  ADD KEY `artist_id` (`artist_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `artists`
+--
+ALTER TABLE `artists`
+  ADD PRIMARY KEY (`artist_id`);
+
+--
+-- Indexes for table `categories`
+--
+ALTER TABLE `categories`
+  ADD PRIMARY KEY (`category_id`);
+
+--
+-- Indexes for table `logs`
+--
+ALTER TABLE `logs`
+  ADD PRIMARY KEY (`log_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `migrations`
+--
+ALTER TABLE `migrations`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `model_files`
+--
+ALTER TABLE `model_files`
+  ADD PRIMARY KEY (`model_id`),
+  ADD KEY `artifact_id` (`artifact_id`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`user_id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `artifacts`
+--
+ALTER TABLE `artifacts`
+  MODIFY `artifact_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `artists`
+--
+ALTER TABLE `artists`
+  MODIFY `artist_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `categories`
+--
+ALTER TABLE `categories`
+  MODIFY `category_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `logs`
+--
+ALTER TABLE `logs`
+  MODIFY `log_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `migrations`
+--
+ALTER TABLE `migrations`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `model_files`
+--
+ALTER TABLE `model_files`
+  MODIFY `model_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `artifacts`
+--
+ALTER TABLE `artifacts`
+  ADD CONSTRAINT `artifacts_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`category_id`),
+  ADD CONSTRAINT `artifacts_ibfk_2` FOREIGN KEY (`artist_id`) REFERENCES `artists` (`artist_id`),
+  ADD CONSTRAINT `artifacts_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
+
+--
+-- Constraints for table `logs`
+--
+ALTER TABLE `logs`
+  ADD CONSTRAINT `logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
+
+--
+-- Constraints for table `model_files`
+--
+ALTER TABLE `model_files`
+  ADD CONSTRAINT `model_files_ibfk_1` FOREIGN KEY (`artifact_id`) REFERENCES `artifacts` (`artifact_id`);
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

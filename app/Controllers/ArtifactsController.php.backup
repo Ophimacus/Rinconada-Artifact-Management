@@ -1,0 +1,406 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Models\ArtifactsModel;
+use App\Models\ArtistModel;
+use App\Models\CategoryModel;
+use App\Models\UserModel;
+use App\Models\ModelFilesModel;
+use CodeIgniter\Exceptions\PageNotFoundException;
+use CodeIgniter\Files\File;
+
+class ArtifactsController extends BaseController
+{
+    protected $artifactsModel;
+    protected $artistModel;
+    protected $categoryModel;
+    protected $userModel;
+    protected $modelFilesModel;
+
+    public function __construct()
+    {
+        $this->artifactsModel = new ArtifactsModel();
+        $this->artistModel = new ArtistModel();
+        $this->categoryModel = new CategoryModel();
+        $this->userModel = new UserModel();
+        $this->modelFilesModel = new ModelFilesModel();
+    }
+
+    // List all artifacts
+    public function index()
+    {
+        $artifacts = $this->artifactsModel
+            ->select('artifacts.*, artists.name AS artist_name, categories.name AS category_name, users.username AS user_name, model_files.file_path AS model_file_path')
+            ->join('artists', 'artists.artist_id = artifacts.artist_id', 'left')
+            ->join('categories', 'categories.category_id = artifacts.category_id', 'left')
+            ->join('users', 'users.user_id = artifacts.user_id', 'left')
+            ->join('model_files', 'model_files.model_id = artifacts.model_id', 'left')
+            ->findAll();
+        $data = [
+            'artifacts' => $artifacts,
+            'title' => 'Artifacts List'
+        ];
+        return view('artifacts/index', $data);
+    }
+
+    // Show single artifact
+    public function show($artifact_id = null)
+    {
+        $artifact = $this->artifactsModel
+            ->select('artifacts.*, artists.name AS artist_name, categories.name AS category_name, users.username AS user_name, model_files.file_path AS model_file_path')
+            ->join('artists', 'artists.artist_id = artifacts.artist_id', 'left')
+            ->join('categories', 'categories.category_id = artifacts.category_id', 'left')
+            ->join('users', 'users.user_id = artifacts.user_id', 'left')
+            ->join('model_files', 'model_files.model_id = artifacts.model_id', 'left')
+            ->find($artifact_id);
+        if ($artifact === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+        return view('artifacts/show', [
+            'artifact' => $artifact,
+            'title' => $artifact['title']
+        ]);
+    }
+
+    // Show create form
+    public function new()
+    {
+        $data = [
+            'title' => 'Add New Artifact',
+            'artists' => $this->artistModel->findAll(),
+            'categories' => $this->categoryModel->findAll(),
+            'users' => $this->userModel->findAll()
+        ];
+        return view('artifacts/create', $data);
+    }
+
+    // Create artifact
+    public function create()
+    {
+        // Enable error reporting for debugging
+        error_reporting(E_ALL);
+        ini_set('display_errors', 1);
+        
+        log_message('debug', 'ArtifactsController::create() called');
+        log_message('debug', '=== POST DATA ===');
+        log_message('debug', print_r($this->request->getPost(), true));
+        
+        // Check if database connection is working
+        try {
+            $db = \Config\Database::connect();
+            $db->initialize();
+            log_message('debug', 'Database connection successful');
+        } catch (\Exception $e) {
+            log_message('error', 'Database connection failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Database connection failed: ' . $e->getMessage())->withInput();
+        }
+        
+        // First, validate all non-file fields
+        $rules = [
+            'title' => 'required|min_length[3]|max_length[150]',
+            'category_id' => 'required|integer',
+            'artist_id' => 'required|integer',
+            'user_id' => 'required|integer',
+        ];
+        
+        // Initialize validation with custom error messages
+        $validation = \Config\Services::validation();
+        $validation->setRules($rules);
+        
+        // First validate non-file fields
+        if (!$validation->withRequest($this->request)->run()) {
+            log_message('debug', 'Artifact creation validation failed: ' . print_r($validation->getErrors(), true));
+            return redirect()->back()
+                ->withInput()
+                ->with('errors', $validation->getErrors());
+        }
+        
+        // Now handle file upload separately with more detailed error handling
+        $modelFile = $this->request->getFile('model_file');
+        
+        // Check if file was uploaded
+        if ($modelFile === null) {
+            log_message('error', 'No file was uploaded');
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Please select a 3D model file to upload.');
+        }
+        
+        // Check if file is valid
+        if (!$modelFile->isValid()) {
+            $error = $modelFile->getErrorString();
+            log_message('error', 'Uploaded file is not valid: ' . $error);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Uploaded file is not valid: ' . $error);
+        }
+        
+        // Check file size (100MB limit)
+        if ($modelFile->getSize() > 102400 * 1024) { // 100MB in bytes
+            log_message('error', 'File too large: ' . $modelFile->getSize() . ' bytes');
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'The 3D model file is too large. Maximum size is 100MB.');
+        }
+        
+        // Check file extension
+        $allowedExtensions = ['obj', 'fbx', 'gltf', 'glb', 'stl', 'ply', 'abc'];
+        $fileExtension = strtolower($modelFile->getClientExtension());
+        if (!in_array($fileExtension, $allowedExtensions)) {
+            log_message('error', 'Invalid file extension: ' . $fileExtension);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Invalid file type. Please upload a 3D model file with one of these extensions: ' . implode(', ', $allowedExtensions));
+        }
+
+        // Prepare artifact data
+        $artifactData = [
+            'title' => $this->request->getPost('title'),
+            'description' => $this->request->getPost('description'),
+            'origin' => $this->request->getPost('origin'),
+            'municipality' => $this->request->getPost('municipality'),
+            'category_id' => $this->request->getPost('category_id'),
+            'artist_id' => $this->request->getPost('artist_id'),
+            'user_id' => $this->request->getPost('user_id'),
+            'created_at' => date('Y-m-d H:i:s'),
+            'model_id' => null, // Will be updated after file upload
+        ];
+
+        // Start database transaction
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        try {
+            // Insert the artifact first
+            $artifactId = $this->artifactsModel->insert($artifactData);
+            
+            if (!$artifactId) {
+                throw new \RuntimeException('Failed to create artifact record');
+            }
+
+            $modelId = null;
+            $filePath = null;
+            
+            try {
+                // Generate a unique filename
+                $newName = $modelFile->getRandomName();
+                $uploadPath = WRITEPATH . 'uploads/models';
+                
+                log_message('debug', '=== FILE UPLOAD PROCESSING ===');
+                log_message('debug', 'Original filename: ' . $modelFile->getClientName());
+                log_message('debug', 'Generated filename: ' . $newName);
+                log_message('debug', 'Target directory: ' . $uploadPath);
+                
+                // Ensure upload directory exists and is writable
+                if (!is_dir($uploadPath)) {
+                    log_message('debug', 'Creating upload directory: ' . $uploadPath);
+                    if (!mkdir($uploadPath, 0777, true)) {
+                        throw new \RuntimeException('Failed to create upload directory: ' . $uploadPath);
+                    }
+                    log_message('info', 'Created upload directory: ' . $uploadPath);
+                }
+                
+                if (!is_writable($uploadPath)) {
+                    throw new \RuntimeException('Upload directory is not writable: ' . $uploadPath);
+                }
+                
+                // Move the uploaded file
+                if (!$modelFile->move($uploadPath, $newName)) {
+                    throw new \RuntimeException('Failed to move uploaded file: ' . $modelFile->getErrorString());
+                }
+                
+                $filePath = 'uploads/models/' . $newName;
+                log_message('info', 'File successfully uploaded to: ' . $filePath);
+                
+                // Prepare model file data
+                $modelData = [
+                    'file_name' => $modelFile->getClientName(),
+                    'file_path' => $filePath,
+                    'file_size_kb' => $modelFile->getSize() ? round($modelFile->getSize() / 1024) : 0,
+                    'uploaded_at' => date('Y-m-d H:i:s'),
+                ];
+                
+                // Save file info to database
+                $modelId = $this->modelFilesModel->insert($modelData);
+                if (!$modelId) {
+                    throw new \RuntimeException('Failed to save model file information to database');
+                }
+                
+                log_message('info', 'Saved model file record with ID: ' . $modelId);
+                
+                // Update artifact with file reference
+                if (!$this->artifactsModel->update($artifactId, ['model_id' => $modelId])) {
+                    throw new \RuntimeException('Failed to update artifact with model file reference');
+                }
+                
+            } catch (\Exception $fileError) {
+                // Clean up any uploaded file if an error occurred
+                if (isset($filePath) && file_exists(WRITEPATH . $filePath)) {
+                    unlink(WRITEPATH . $filePath);
+                }
+                if ($modelId) {
+                    $this->modelFilesModel->delete($modelId);
+                }
+                throw $fileError; // Re-throw to be caught by outer try-catch
+            }
+            
+            // Commit the transaction if everything succeeded
+            $db->transCommit();
+            log_message('info', 'Artifact created successfully with ID: ' . $artifactId);
+            
+            // Clear form data from session
+            $this->session->remove('_ci_old_input');
+            
+            return redirect()->to('/artifacts')->with('success', 'Artifact created successfully!');
+
+        } catch (\Exception $e) {
+            // Rollback the transaction on error
+            $db->transRollback();
+            
+            // Clean up any uploaded file if it exists
+            if (isset($filePath) && file_exists(WRITEPATH . $filePath)) {
+                unlink(WRITEPATH . $filePath);
+            }
+            
+            log_message('error', 'Error creating artifact: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            return redirect()->back()->withInput()->with('error', 'Failed to create artifact: ' . $e->getMessage());
+        }
+    }
+
+    // Show edit form
+    public function edit($artifact_id = null)
+    {
+        $artifact = $this->artifactsModel
+             ->select('artifacts.*, model_files.file_path AS model_file_path')
+             ->join('model_files', 'model_files.model_id = artifacts.model_id', 'left')
+             ->find($artifact_id);
+
+        if ($artifact === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+        $data = [
+            'artifact' => $artifact,
+            'title' => 'Edit ' . $artifact['title'],
+            'artists' => $this->artistModel->findAll(),
+            'categories' => $this->categoryModel->findAll(),
+            'users' => $this->userModel->findAll()
+        ];
+        return view('artifacts/edit', $data);
+    }
+
+    // Update artifact
+    public function update($artifact_id = null)
+    {
+        $artifact = $this->artifactsModel->find($artifact_id);
+        if ($artifact === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $modelFile = $this->request->getFile('model_file');
+        
+        $rules = [
+            'title' => 'required|min_length[3]|max_length[150]',
+            'description' => 'permit_empty',
+            'origin' => 'permit_empty|max_length[150]',
+            'municipality' => 'permit_empty|max_length[150]',
+            'category_id' => 'required|integer',
+            'artist_id' => 'required|integer',
+            'user_id' => 'required|integer',
+            'model_file' => [
+                'if_exist',
+                'uploaded[model_file]',
+                'mime_in[model_file,application/octet-stream,model/gltf-binary,model/gltf+json]',
+                'max_size[model_file,10240]',
+            ]
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        // Get the existing model ID if it exists
+        $modelId = $artifact['model_id'] ?? null;
+
+        // Handle model file upload if provided
+        if ($modelFile && $modelFile->isValid() && !$modelFile->hasMoved()) {
+            // Delete old model file if exists
+            if (!empty($modelId)) {
+                $oldModel = $this->modelFilesModel->find($modelId);
+                if ($oldModel && !empty($oldModel['file_path']) && file_exists(WRITEPATH . $oldModel['file_path'])) {
+                    unlink(WRITEPATH . $oldModel['file_path']);
+                }
+            }
+
+            $newName = $modelFile->getRandomName();
+            $uploadPath = WRITEPATH . 'uploads/models';
+
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
+
+            $modelFile->move($uploadPath, $newName);
+            $filePath = 'uploads/models/' . $newName;
+
+            $modelData = [
+                'file_name' => $modelFile->getClientName(),
+                'file_path' => $filePath,
+                'file_size_kb' => $modelFile->getSize() ? round($modelFile->getSize() / 1024) : 0,
+                'uploaded_at' => date('Y-m-d H:i:s'),
+                'artifact_id' => $artifact_id,
+            ];
+
+            if (!empty($modelId)) {
+                // Update existing model file
+                $this->modelFilesModel->update($modelId, $modelData);
+            } else {
+                // Create new model file and update artifact with new model_id
+                $modelId = $this->modelFilesModel->insert($modelData);
+            }
+        }
+
+        $data = [
+            'title' => $this->request->getPost('title'),
+            'description' => $this->request->getPost('description'),
+            'origin' => $this->request->getPost('origin'),
+            'municipality' => $this->request->getPost('municipality'),
+            'category_id' => $this->request->getPost('category_id'),
+            'artist_id' => $this->request->getPost('artist_id'),
+            'user_id' => $this->request->getPost('user_id'),
+            'model_id' => $modelId
+        ];
+
+        try {
+            $this->artifactsModel->update($artifact_id, $data);
+            return redirect()->to('/artifacts')->with('success', 'Artifact updated successfully');
+        } catch (\Exception $e) {
+            log_message('error', 'Error updating artifact: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Failed to update artifact: ' . $e->getMessage());
+        }
+    }
+
+    // Delete artifact
+    public function delete($artifact_id = null)
+    {
+        $artifact = $this->artifactsModel->find($artifact_id);
+        if ($artifact === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        if (!empty($artifact['model_id'])) {
+            $model = $this->modelFilesModel->find($artifact['model_id']);
+            if ($model && !empty($model['file_path']) && file_exists(WRITEPATH . $model['file_path'])) {
+                unlink(WRITEPATH . $model['file_path']);
+            }
+            $this->modelFilesModel->delete($artifact['model_id']);
+        }
+
+        try {
+            $this->artifactsModel->delete($artifact_id);
+            return redirect()->to('/artifacts')->with('success', 'Artifact deleted successfully');
+        } catch (\Exception $e) {
+            log_message('error', 'Error deleting artifact: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete artifact');
+        }
+    }
+} 
